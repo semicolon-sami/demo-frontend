@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 
+type Profile = {
+  id: number;
+  name: string;
+  created_at: string;
+};
+
 export default function Home() {
   const [backendMessage, setBackendMessage] = useState("Loading...");
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
     // ✅ Health check
     fetch(backendUrl)
