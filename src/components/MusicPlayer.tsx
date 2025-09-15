@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import MiniPhotoPopup from "@/components/MiniPhotoPopup";
 import DarkModeToggle from "@/components/DarkModeToggle";
-// Typed song + favorite row
+
 type Song = { name: string; path: string; url: string };
 type FavoriteRow = { song_path: string; song_name?: string };
 
@@ -13,11 +13,21 @@ type MusicPlayerProps = {
   onOpenSlideshow?: () => void;
 };
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function MusicPlayer({
   onOpenGallery,
   onOpenSlideshow
 }: MusicPlayerProps) {
   const [folder, setFolder] = useState<string>("");
+  const [folders, setFolders] = useState<string[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,57 +36,75 @@ export default function MusicPlayer({
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [showMiniPopup, setShowMiniPopup] = useState(true);
 
+  // Playback features
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+
+  useEffect(() => {
+    async function getFolders() {
+      const { data } = await supabase.storage.from("songs").list("", { limit: 100 });
+      const names = (data || [])
+        .map(f => f.name)
+        .filter(n => !!n && !n.includes("."));
+      setFolders(["All/Root", ...names]);
+    }
+    getFolders();
+  }, []);
+
   useEffect(() => {
     refreshAll();
+    // eslint-disable-next-line
   }, [folder]);
 
   async function fetchSongs() {
     setLoading(true);
     try {
+      let songList: Song[] = [];
       if (folder === "favorites") {
-        const { data: favRows, error: favErr } = await supabase
+        const { data: favRows } = await supabase
           .from("favorites")
           .select("song_path")
           .returns<FavoriteRow[]>();
-        if (favErr) throw favErr;
-        const paths: string[] = (favRows || []).map((r) => r.song_path);
-
+        const paths = (favRows || []).map(r => r.song_path);
         const signed = await Promise.all(
-          paths.map(async (path) => {
+          paths.map(async path => {
             const { data } = await supabase.storage
               .from("songs")
               .createSignedUrl(path, 60 * 60 * 24);
             return {
               name: path.split("/").pop() || path,
               path,
-              url: data?.signedUrl ?? "",
+              url: data?.signedUrl ?? ""
             };
           })
         );
-        setSongs(signed.filter((s) => s.url));
+        songList = signed.filter(s => s.url);
       } else {
-        const listPath = folder || "";
-        const { data: files, error } = await supabase.storage
+        const listPath = folder && folder !== "All/Root" ? folder : "";
+        const { data: files } = await supabase.storage
           .from("songs")
           .list(listPath, { limit: 100 });
-        if (error) throw error;
-
         const signed = await Promise.all(
-          (files || []).map(async (f) => {
-            const path = listPath ? `${listPath}/${f.name}` : f.name;
-            const { data } = await supabase.storage
-              .from("songs")
-              .createSignedUrl(path, 60 * 60 * 24);
-            return { name: f.name, path, url: data?.signedUrl ?? "" };
-          })
+          (files || []).filter(f => f.name)
+            .map(async (f) => {
+              const path = listPath ? `${listPath}/${f.name}` : f.name;
+              const { data } = await supabase.storage
+                .from("songs")
+                .createSignedUrl(path, 60 * 60 * 24);
+              return { name: f.name, path, url: data?.signedUrl ?? "" };
+            })
         );
-        setSongs(signed.filter((s) => s.url));
+        songList = signed.filter(s => s.url);
       }
+      setSongs(songList);
     } catch (err) {
       console.error("fetchSongs error", err);
       setSongs([]);
     } finally {
       setLoading(false);
+      setCurrentIndex(null);
+      setIsPlaying(false);
     }
   }
 
@@ -97,30 +125,81 @@ export default function MusicPlayer({
     await Promise.all([fetchSongs(), fetchFavorites()]);
   }
 
+  // When currentIndex changes, always play!
+  useEffect(() => {
+    if (
+      currentIndex !== null &&
+      songs[currentIndex] &&
+      audioRef.current &&
+      isPlaying
+    ) {
+      audioRef.current.src = songs[currentIndex].url;
+      audioRef.current
+        .play()
+        .then(() => updateMediaSession(songs[currentIndex]))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line
+  }, [currentIndex, isPlaying]); // isPlaying needed in dep
+
   function playIndex(i: number) {
     if (i < 0 || i >= songs.length) return;
     setCurrentIndex(i);
-    const track = songs[i];
-    if (audioRef.current) {
-      audioRef.current.src = track.url;
-      audioRef.current.play().catch(() => {});
-    }
-    updateMediaSession(track);
+    setIsPlaying(true);
   }
 
   function playNext() {
     if (!songs.length) return;
-    const next = currentIndex === null ? 0 : (currentIndex + 1) % songs.length;
-    playIndex(next);
+    if (isShuffle) {
+      let next;
+      do {
+        next = Math.floor(Math.random() * songs.length);
+      } while (songs.length > 1 && next === currentIndex);
+      playIndex(next);
+    } else {
+      const next =
+        currentIndex === null ? 0 : (currentIndex + 1) % songs.length;
+      playIndex(next);
+    }
   }
 
   function playPrev() {
     if (!songs.length) return;
-    const prev =
-      currentIndex === null
-        ? songs.length - 1
-        : (currentIndex - 1 + songs.length) % songs.length;
-    playIndex(prev);
+    if (isShuffle) {
+      let prev;
+      do {
+        prev = Math.floor(Math.random() * songs.length);
+      } while (songs.length > 1 && prev === currentIndex);
+      playIndex(prev);
+    } else {
+      const prev =
+        currentIndex === null
+          ? songs.length - 1
+          : (currentIndex - 1 + songs.length) % songs.length;
+      playIndex(prev);
+    }
+  }
+
+  // Play/Pause toggling
+  function handlePlayPause() {
+    if (currentIndex === null && songs.length) {
+      playIndex(0);
+    } else if (audioRef.current) {
+      if (audioRef.current.paused) {
+        setIsPlaying(true);
+      } else {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  }
+
+  function handleEnded() {
+    if (isRepeat && currentIndex !== null) {
+      playIndex(currentIndex);
+    } else {
+      playNext();
+    }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -129,7 +208,9 @@ export default function MusicPlayer({
     setUploading(true);
     try {
       const dest =
-        folder && folder !== "favorites" ? `${folder}/${file.name}` : file.name;
+        folder && folder !== "All/Root" && folder !== "favorites"
+          ? `${folder}/${file.name}`
+          : file.name;
       const { error } = await supabase.storage
         .from("songs")
         .upload(dest, file, { upsert: true });
@@ -155,6 +236,7 @@ export default function MusicPlayer({
       if (currentIndex === i) {
         audioRef.current?.pause();
         setCurrentIndex(null);
+        setIsPlaying(false);
       }
       await refreshAll();
     } catch (err) {
@@ -182,23 +264,18 @@ export default function MusicPlayer({
 
   function updateMediaSession(track: Song) {
     if (!("mediaSession" in navigator)) return;
-    navigator.mediaSession.metadata = new MediaMetadata({
+    navigator.mediaSession.metadata = new window.MediaMetadata({
       title: track.name,
       artist: "My Private Songs",
       album: folder || "Playlist",
-      artwork: [
-        { src: "/music-icon.png", sizes: "512x512", type: "image/png" },
-      ],
+      artwork: [{ src: "/music-icon.png", sizes: "512x512", type: "image/png" }]
     });
-
     try {
-      navigator.mediaSession.setActionHandler("play", () => audioRef.current?.play());
+      navigator.mediaSession.setActionHandler("play", () => playIndex(currentIndex ?? 0));
       navigator.mediaSession.setActionHandler("pause", () => audioRef.current?.pause());
       navigator.mediaSession.setActionHandler("previoustrack", playPrev);
       navigator.mediaSession.setActionHandler("nexttrack", playNext);
-    } catch {
-      // ignore unsupported handlers
-    }
+    } catch { }
   }
 
   return (
@@ -208,7 +285,7 @@ export default function MusicPlayer({
         <MiniPhotoPopup onClose={() => setShowMiniPopup(false)} />
       )}
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
+        {/* Header + folder picker */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-extrabold text-3xl md:text-4xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-400 to-blue-500 mb-2">
@@ -224,9 +301,11 @@ export default function MusicPlayer({
               value={folder}
               onChange={(e) => setFolder(e.target.value)}
             >
-              <option value="">All / Root</option>
-              <option value="recent">Recent</option>
-              <option value="old">Old</option>
+              {folders.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
               <option value="favorites">Favorites</option>
             </select>
             <label className="bg-white/30 dark:bg-gray-800/70 border border-white/20 dark:border-gray-700 px-3 py-1 rounded-lg cursor-pointer shadow transition-all backdrop-blur-lg text-blue-800 dark:text-blue-300">
@@ -238,16 +317,7 @@ export default function MusicPlayer({
                 className="hidden"
               />
             </label>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                 {/* ... existing header ... */}
-              </div>
-              <div className="flex items-center gap-2">
-                 {/* ... existing controls ... */}
-                 <DarkModeToggle />
-              </div>
-            </div>
-            
+            <DarkModeToggle />
             <button
               onClick={refreshAll}
               className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:bg-blue-300/30 dark:hover:bg-blue-700/40"
@@ -260,14 +330,12 @@ export default function MusicPlayer({
             >
               Gallery
             </button>
-
             <button
               onClick={onOpenSlideshow}
               className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:bg-purple-200/40 dark:hover:bg-purple-500/30"
             >
               Slideshow Only
             </button>
-            
             <button
               onClick={() => setShowMiniPopup(true)}
               className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all"
@@ -278,15 +346,41 @@ export default function MusicPlayer({
             <button
               onClick={async () => {
                 await fetch("/api/logout", { method: "POST" });
-                window.location.href = "/login"; // <-- Redirect on logout
+                window.location.href = "/login";
               }}
               className="px-3 py-1 rounded-lg bg-white/50 dark:bg-gray-900/80 border border-white/20 dark:border-gray-700 text-gray-700 dark:text-gray-200 shadow transition-all hover:bg-red-100/40 dark:hover:bg-red-300/20"
             >
               Logout
             </button>
-
           </div>
         </div>
+
+        {/* Playback mode buttons */}
+        <div className="mb-3 flex gap-3 items-center">
+          <button
+            onClick={() => setIsShuffle(s => !s)}
+            className={`px-4 py-1 rounded-lg border shadow ${
+              isShuffle
+                ? "bg-blue-500 text-white ring-2 ring-blue-400"
+                : "bg-white/30 dark:bg-gray-800/40 text-gray-700 dark:text-gray-200"
+            }`}
+            title={isShuffle ? "Shuffle mode ON" : "Shuffle mode OFF"}
+          >
+            {isShuffle ? "🔀 Shuffle On" : "🔀 Shuffle Off"}
+          </button>
+          <button
+            onClick={() => setIsRepeat(r => !r)}
+            className={`px-4 py-1 rounded-lg border shadow ${
+              isRepeat
+                ? "bg-pink-500 text-white ring-2 ring-pink-400"
+                : "bg-white/30 dark:bg-gray-800/40 text-gray-700 dark:text-gray-200"
+            }`}
+            title={isRepeat ? "Repeat mode ON" : "Repeat mode OFF"}
+          >
+            {isRepeat ? "🔁 Repeat On" : "🔁 Repeat Off"}
+          </button>
+        </div>
+
         {/* Player controls */}
         <div className="mb-4">
           <div className="bg-white/40 dark:bg-gray-900/80 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700 transition-all">
@@ -294,7 +388,7 @@ export default function MusicPlayer({
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">Now playing</div>
                 <div className="font-semibold truncate max-w-xs text-blue-700 dark:text-blue-300">
-                  {currentIndex !== null
+                  {currentIndex !== null && songs.length
                     ? songs[currentIndex]?.name ?? "—"
                     : "No track selected"}
                 </div>
@@ -307,14 +401,7 @@ export default function MusicPlayer({
                   ⏮ Prev
                 </button>
                 <button
-                  onClick={() => {
-                    if (currentIndex === null && songs.length) playIndex(0);
-                    else if (audioRef.current) {
-                      if (audioRef.current.paused)
-                        audioRef.current.play().catch(() => {});
-                      else audioRef.current.pause();
-                    }
-                  }}
+                  onClick={handlePlayPause}
                   className="px-3 py-1 rounded-full bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:scale-110"
                 >
                   ⏯ Play/Pause
@@ -327,14 +414,15 @@ export default function MusicPlayer({
                 </button>
               </div>
             </div>
-            {/* Global audio element */}
             <div className="mt-3">
               <audio
                 ref={audioRef}
                 controls
                 className="w-full bg-white/30 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700 shadow"
                 src={currentIndex !== null ? songs[currentIndex]?.url : undefined}
-                onEnded={playNext}
+                onEnded={handleEnded}
+                onPause={() => setIsPlaying(false)}
+                onPlay={() => setIsPlaying(true)}
               />
             </div>
           </div>
@@ -387,7 +475,6 @@ export default function MusicPlayer({
           )}
         </div>
       </div>
-      {/* NO local modals here—the parent page provides modal handling! */}
     </div>
   );
 }
