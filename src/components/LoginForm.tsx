@@ -1,37 +1,37 @@
-'use client'
-import { useState } from 'react'
+"use client";
+import { useState } from "react";
 
 export default function LoginForm({ onLogin }: { onLogin: () => void }) {
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
-      })
+      });
       if (res.ok) {
-        onLogin()
+        onLogin();
       } else {
-        setError('Wrong password')
+        setError("Wrong password");
       }
     } catch (err) {
-      setError('Network error')
+      setError("Network error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <form onSubmit={submit} className="w-full max-w-sm bg-white p-6 rounded shadow">
-        <h2 className="text-xl font-bold mb-4">🔒 Login</h2>
+        <h2 className="text-xl font-bold mb-4 text-center">🔒 Login</h2>
         <input
           type="password"
           value={password}
@@ -39,11 +39,11 @@ export default function LoginForm({ onLogin }: { onLogin: () => void }) {
           placeholder="Enter password"
           className="w-full p-2 border rounded mb-3"
         />
-        <button disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">
-          {loading ? 'Logging in…' : 'Login'}
+        <button disabled={loading} className="w-full bg-purple-600 text-white py-2 rounded">
+          {loading ? "Logging in…" : "Login"}
         </button>
         {error && <p className="text-red-600 mt-3">{error}</p>}
       </form>
     </div>
-  )
+  );
 }
