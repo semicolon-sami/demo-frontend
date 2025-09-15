@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import FolderTabs from "@/components/FolderTabs";
+import CreateFolder from "@/components/CreateFolder";
+import UploadBox from "@/components/UploadBox";
+import MediaGrid from "@/components/MediaGrid";
+import Lightbox from "@/components/Lightbox";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
+// Inline Media type for convenience
 type Media = {
   name: string;
   path: string;
@@ -25,23 +30,22 @@ export default function GalleryPage() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const supabaseClient = createClientComponentClient();
+  const supabase = createClientComponentClient();
 
   // Detect folders
   const detectFolders = useCallback(async (): Promise<string[]> => {
     const { data, error } = await supabase.storage.from("photos").list("", { limit: 100 });
     if (error) return [];
     return (data || []).map((f) => f.name).filter((n) => n && !n.includes("."));
-  }, []);
+  }, [supabase]);
 
-  // List media in a folder (no metadata)
+  // List media in a folder (this was fixed)
   const listMediaInFolder = useCallback(async (folderName: string) => {
     const listPath = folderName ? folderName : "";
     const { data: files, error } = await supabase.storage.from("photos").list(listPath, { limit: 200 });
     if (error) return [];
-    const signed: Media[] = await Promise.all(
+    const signed = await Promise.all(
       (files || []).map(async (f) => {
-        // Skip folders
         if (!f.name || f.name.endsWith('/')) return null;
         const path = listPath ? `${listPath}/${f.name}` : f.name;
         const { data } = await supabase.storage.from("photos").createSignedUrl(path, 60 * 60 * 24);
@@ -49,8 +53,8 @@ export default function GalleryPage() {
         return data?.signedUrl ? { name: f.name, path, url: data.signedUrl, type } : null;
       })
     );
-    return signed.filter(Boolean) as Media[];
-  }, []);
+    return (signed.filter(Boolean) as Media[]);
+  }, [supabase]);
 
   // Load media based on tab
   const loadMedia = useCallback(
@@ -59,13 +63,11 @@ export default function GalleryPage() {
       try {
         if (tab === "All") {
           const folderNames = await detectFolders();
-          let all: Media[] = [];
-          // Images/videos in all folders
+          const all: Media[] = [];
           for (const f of folderNames) {
             const p = await listMediaInFolder(f);
             all.push(...p);
           }
-          // Plus any images/videos in bucket root
           const rootFiles = await listMediaInFolder("");
           all.push(...rootFiles);
           setMedia(all);
@@ -90,9 +92,9 @@ export default function GalleryPage() {
       return;
     }
     setFavorites((data || []).map((row: { path: string }) => row.path));
-  }, []);
+  }, [supabase]);
 
-  // On first load, load folders and media for "All" (do NOT setActiveTab after first mount)
+  // Initial load
   useEffect(() => {
     (async () => {
       const detected = await detectFolders();
@@ -100,20 +102,19 @@ export default function GalleryPage() {
       await loadMedia("All");
       await loadFavorites();
     })();
-    const channel = supabaseClient
+    const channel = supabase
       .channel("photos-changes")
       .on("postgres_changes", { event: "*", schema: "storage", table: "objects" }, () => {
         loadMedia(activeTab);
       })
       .subscribe();
     return () => {
-      supabaseClient.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
-    // only run once (no activeTab dependency here!)
     // eslint-disable-next-line
   }, []);
 
-  // Whenever activeTab changes (by user click), reload only the tab the user requested
+  // Reload media on tab change
   useEffect(() => {
     loadMedia(activeTab);
     // eslint-disable-next-line
@@ -131,7 +132,7 @@ export default function GalleryPage() {
   }
 
   // Create folder
-  async function createFolder() {
+  async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
     const folderPath = `${newFolderName}/.keep`;
     await supabase.storage.from("photos").upload(folderPath, new Blob([""]), { upsert: true });
@@ -140,17 +141,14 @@ export default function GalleryPage() {
     setFolders((prev) =>
       prev.includes(newFolderName) ? prev : [...prev, newFolderName]
     );
-    // stay on the current tab
     await loadMedia(activeTab);
   }
 
-  // Delete
+  // Delete & Favorite
   async function deleteMedia(path: string) {
     await supabase.storage.from("photos").remove([path]);
     setMedia((prev) => prev.filter((m) => m.path !== path));
   }
-
-  // Toggle favorite
   async function toggleFavorite(path: string) {
     const isFav = favorites.includes(path);
     if (isFav) {
@@ -230,185 +228,41 @@ export default function GalleryPage() {
             Back
           </button>
         </div>
-        {/* Tabs */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {folders.map((f) => (
-            <button
-              key={f}
-              onClick={() => setActiveTab(f)}
-              className={`px-3 py-1 rounded ${activeTab === f ? "bg-purple-600 text-white" : "bg-white border"
-                }`}
-              style={{ minWidth: 70 }}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        {/* Create folder */}
-        <div className="mb-4 flex gap-2">
-          <input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="New folder name"
-            className="px-2 py-1 border rounded"
-          />
-          <button
-            onClick={createFolder}
-            className="px-3 py-1 bg-green-500 text-white rounded"
-          >
-            Create
-          </button>
-        </div>
-        {/* Upload */}
-        <div
-          className="mb-6 border-2 border-dashed p-6 rounded text-center"
-          onDragOver={e => {
-            e.preventDefault();
-          }}
-          onDrop={e => {
-            e.preventDefault();
-            handleUpload(e.dataTransfer.files);
-          }}
-        >
-          <p className="mb-2">Upload photos or videos</p>
-          <input
-            type="file"
-            multiple
-            accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.webm"
-            onChange={(e) => handleUpload(e.target.files)}
-          />
-        </div>
-        {/* Grid */}
+        <FolderTabs
+          folders={folders}
+          activeTab={activeTab}
+          onTabClick={setActiveTab}
+        />
+        <CreateFolder
+          value={newFolderName}
+          onValueChange={setNewFolderName}
+          onCreate={handleCreateFolder}
+        />
+        <UploadBox onUpload={handleUpload} />
         {loading ? (
           <p>Loading…</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {media.map((m, i) => (
-              <div
-                key={m.path}
-                className="relative cursor-pointer group"
-                onClick={() => openLightbox(i)}
-                tabIndex={0}
-                aria-label={m.name}
-              >
-                {m.type === "image" ? (
-                  <img
-                    src={m.url}
-                    alt={m.name}
-                    className="w-full h-40 object-cover rounded shadow-sm group-hover:opacity-80 transition"
-                  />
-                ) : (
-                  <video
-                    src={m.url}
-                    className="w-full h-40 object-cover rounded shadow-sm group-hover:opacity-80 transition"
-                  />
-                )}
-                <span className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
-                  {m.name}
-                </span>
-                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100">
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      toggleFavorite(m.path);
-                    }}
-                    className="px-1 bg-yellow-300 rounded"
-                    aria-label={favorites.includes(m.path) ? "Remove from favorites" : "Add to favorites"}
-                  >
-                    {favorites.includes(m.path) ? "⭐" : "☆"}
-                  </button>
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      deleteMedia(m.path);
-                    }}
-                    className="px-1 bg-red-500 text-white rounded"
-                    aria-label="Delete media"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <MediaGrid
+            media={media}
+            favorites={favorites}
+            onFavorite={toggleFavorite}
+            onDelete={deleteMedia}
+            onClickMedia={openLightbox}
+          />
         )}
-        {/* Lightbox */}
-        {isLightboxOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-            {/* Navigation buttons */}
-            <button
-              onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/70 text-white rounded-full p-3 text-3xl shadow hover:bg-purple-600"
-              aria-label="Previous"
-              tabIndex={0}
-              style={{ zIndex: 1001 }}
-            >
-              ◀
-            </button>
-            <button
-              onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 text-white rounded-full p-3 text-3xl shadow hover:bg-purple-600"
-              aria-label="Next"
-              tabIndex={0}
-              style={{ zIndex: 1001 }}
-            >
-              ▶
-            </button>
-            {/* Close button */}
-            <button
-              onClick={closeLightbox}
-              className="absolute top-4 right-4 text-white text-4xl font-bold bg-black/70 rounded-full px-4 py-2 shadow-lg z-50"
-              aria-label="Close lightbox"
-              tabIndex={0}
-              id="lightbox-close-btn"
-              style={{ zIndex: 1002 }}
-            >
-              ✕
-            </button>
-            <div className="flex flex-col items-center w-full max-w-4xl">
-              {/* Favorite/Download/Slideshow */}
-              <div className="mb-4 flex gap-3 justify-center">
-                <button
-                  onClick={() => toggleFavorite(media[lightboxIndex].path)}
-                  className="text-2xl"
-                  aria-label={favorites.includes(media[lightboxIndex].path) ? "Remove from favorites" : "Add to favorites"}
-                >
-                  {favorites.includes(media[lightboxIndex].path) ? "⭐" : "☆"}
-                </button>
-                <button
-                  onClick={() => downloadMedia(media[lightboxIndex].url, media[lightboxIndex].name)}
-                  className="text-xl"
-                  aria-label="Download"
-                >
-                  ⬇
-                </button>
-                <button
-                  onClick={() => setSlideshowActive(s => !s)}
-                  className="text-xl"
-                  aria-label="Toggle slideshow"
-                >
-                  {slideshowActive ? "⏸" : "▶"}
-                </button>
-              </div>
-              {media[lightboxIndex].type === "image" ? (
-                <img
-                  src={media[lightboxIndex].url}
-                  alt={media[lightboxIndex].name}
-                  className="max-h-[80vh] max-w-[90vw] object-contain bg-black rounded shadow-lg"
-                  style={{ boxShadow: "0 4px 32px #0009" }}
-                />
-              ) : (
-                <video
-                  src={media[lightboxIndex].url}
-                  controls
-                  autoPlay
-                  className="max-h-[80vh] max-w-[90vw] object-contain bg-black rounded shadow-lg"
-                  style={{ boxShadow: "0 4px 32px #0009" }}
-                />
-              )}
-            </div>
-          </div>
-        )}
+        <Lightbox
+          open={isLightboxOpen}
+          media={media}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prev}
+          onNext={next}
+          onFavorite={toggleFavorite}
+          onDownload={downloadMedia}
+          onToggleSlideshow={() => setSlideshowActive((s) => !s)}
+          slideshowActive={slideshowActive}
+          favorites={favorites}
+        />
       </div>
     </div>
   );
