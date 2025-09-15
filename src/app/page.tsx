@@ -15,7 +15,7 @@ type Media = {
   type: "image" | "video";
 };
 
-export default function GalleryPage() {
+export default function HomePage() {
   const [folders, setFolders] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
   const [media, setMedia] = useState<Media[]>([]);
@@ -53,7 +53,7 @@ export default function GalleryPage() {
         return data?.signedUrl ? { name: f.name, path, url: data.signedUrl, type } : null;
       })
     );
-    return signed.filter(Boolean) as Media[];
+    return (signed.filter(Boolean) as Media[]);
   }, [supabase]);
 
   // Load media based on tab
@@ -63,7 +63,7 @@ export default function GalleryPage() {
       try {
         if (tab === "All") {
           const folderNames = await detectFolders();
-          let all: Media[] = [];
+          const all: Media[] = [];
           for (const f of folderNames) {
             const p = await listMediaInFolder(f);
             all.push(...p);
