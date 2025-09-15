@@ -44,7 +44,7 @@ export default function GalleryPage() {
     const listPath = folderName ? folderName : "";
     const { data: files, error } = await supabase.storage.from("photos").list(listPath, { limit: 200 });
     if (error) return [];
-    const signed: Media[] = await Promise.all(
+    const signed = await Promise.all(
       (files || []).map(async (f) => {
         if (!f.name || f.name.endsWith('/')) return null;
         const path = listPath ? `${listPath}/${f.name}` : f.name;
