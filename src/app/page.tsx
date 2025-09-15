@@ -1,82 +1,48 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
-type Profile = {
-  id: number;
-  name: string;
-  created_at: string;
-};
+'use client'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Home() {
-  const [backendMessage, setBackendMessage] = useState("Loading...");
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [songs, setSongs] = useState<{ name: string; url: string }[]>([])
 
   useEffect(() => {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const fetchSongs = async () => {
+      // list files
+      const { data: files, error } = await supabase.storage.from('songs').list()
+      if (error) {
+        console.error(error)
+        return
+      }
 
-    // ✅ Health check
-    fetch(backendUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.message) {
-          setBackendMessage(`✅ Backend says: "${data.message}"`);
-        } else {
-          setBackendMessage("⚠️ Unexpected response from backend");
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setBackendMessage("❌ Could not connect to backend");
-      });
+      // generate signed URLs
+      const urls = await Promise.all(
+        files.map(async (file) => {
+          const { data } = await supabase.storage
+            .from('songs')
+            .createSignedUrl(file.name, 60 * 60) // 1 hour
+          return { name: file.name, url: data?.signedUrl || '' }
+        })
+      )
 
-    // ✅ Supabase DB test
-    fetch(`${backendUrl}/test-db`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          setProfiles(data.data);
-        } else {
-          console.error(data);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
+      setSongs(urls)
+    }
+
+    fetchSongs()
+  }, [])
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-2xl shadow-lg text-center space-y-4 w-full max-w-2xl">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Demo Website Health Check 🚀
-        </h1>
-        <p className="text-lg text-gray-600">
-          Frontend + Backend + Supabase status
-        </p>
-
-        {/* Backend status */}
-        <div className="mt-6 p-4 bg-gray-50 border rounded-lg text-gray-700">
-          {backendMessage}
-        </div>
-
-        {/* Supabase data */}
-        <div className="mt-6 p-4 bg-gray-50 border rounded-lg text-gray-700">
-          <h2 className="text-xl font-semibold mb-2">Supabase Profiles Table</h2>
-          {profiles.length > 0 ? (
-            <ul className="list-disc list-inside text-left">
-              {profiles.map((profile) => (
-                <li key={profile.id}>
-                  {profile.name} (id: {profile.id})
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No profiles found or DB not connected.</p>
-          )}
-        </div>
-      </div>
+    <main className="p-6 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">🎵 My Private Songs</h1>
+      <ul className="space-y-6">
+        {songs.map((song) => (
+          <li key={song.name} className="border rounded-lg p-4 shadow">
+            <p className="font-medium">{song.name}</p>
+            <audio controls preload="none" className="w-full mt-2">
+              <source src={song.url} type="audio/mpeg" />
+            </audio>
+          </li>
+        ))}
+      </ul>
     </main>
-  );
+  )
 }
