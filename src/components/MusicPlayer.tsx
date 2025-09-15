@@ -247,19 +247,14 @@ export default function MusicPlayer({
             >
               Refresh
             </button>
-            {/* Use props for Gallery and Slideshow buttons */}
+            
             <button
-              onClick={onOpenGallery}
+              onClick={() => window.open("/gallery", "_blank")}
               className="px-3 py-1 border rounded"
             >
               Gallery
             </button>
-            <button
-              onClick={onOpenSlideshow}
-              className="px-3 py-1 border rounded"
-            >
-              Slideshow Only
-            </button>
+
             {/* Show floating photos popup */}
             <button
               onClick={() => setShowMiniPopup(true)}
