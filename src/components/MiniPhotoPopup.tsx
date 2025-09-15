@@ -2,9 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
-// For files returned from Supabase listing (no URL yet)
 type FileDescriptor = { name: string; path: string };
-// For files with signed URLs
 type Photo = { name: string; path: string; url: string };
 
 export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
@@ -18,11 +16,9 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     async function loadPhotos() {
       setLoading(true);
 
-      // Get folder names
       const { data: folders } = await supabase.storage.from("photos").list("", { limit: 100 });
       const folderNames = (folders || []).map(f => f.name).filter(n => !!n && !n.includes("."));
 
-      // List files from folders and root; do not attach URL yet
       async function getPhotoFiles(folder: string): Promise<FileDescriptor[]> {
         const { data: files } = await supabase.storage.from("photos").list(folder, { limit: 100 });
         return (files || []).filter(f =>
@@ -39,7 +35,6 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
       }
       fileList = fileList.concat(await getPhotoFiles(""));
 
-      // Now fetch signed URL for each, to turn into Photo[]
       const withUrls: (Photo | null)[] = await Promise.all(
         fileList.map(async f => {
           const { data } = await supabase.storage
@@ -64,7 +59,6 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     loadPhotos();
   }, []);
 
-  // Auto-rotate after load ONLY if not loading and images exist
   useEffect(() => {
     if (loading || photos.length < 2) return;
     const timer = setInterval(() => {
@@ -73,7 +67,6 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     return () => clearInterval(timer);
   }, [photos, loading]);
 
-  // Auto-close on tab hide
   useEffect(() => {
     function handleVisibility() {
       if (document.visibilityState === "hidden") onClose();
@@ -82,7 +75,6 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [onClose]);
 
-  // Lightbox keyboard navigation and swipe
   useEffect(() => {
     if (!showLightbox) return;
     function handleKey(e: KeyboardEvent) {
@@ -92,7 +84,6 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     }
     window.addEventListener("keydown", handleKey);
 
-    // Simple touch swipe left/right (mobile)
     let startX = 0;
     function handleTouchStart(e: TouchEvent) {
       if (e.touches.length === 1) startX = e.touches[0].clientX;
@@ -126,11 +117,11 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
   if (loading) {
     return (
       <div
-        className="fixed bottom-6 right-4 z-50 shadow-lg bg-white rounded-xl border border-gray-200 p-4 flex flex-col items-center justify-center"
-        style={{ width: 180, minHeight: 120, boxShadow: "0 6px 32px 0 rgba(0,0,0,0.20)" }}
+        className="fixed bottom-6 right-4 z-50 shadow-2xl bg-white/30 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-gray-700 p-4 flex flex-col items-center justify-center transition-all"
+        style={{ width: 180, minHeight: 120 }}
       >
-        <span className="text-xs text-gray-400">Loading photos...</span>
-        <div className="mt-2 animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-400" />
+        <span className="text-xs text-blue-700 dark:text-blue-200 font-light">Loading photos...</span>
+        <div className="mt-2 animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-400 dark:border-blue-300" />
       </div>
     );
   }
@@ -139,43 +130,41 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div
-        className="fixed bottom-6 right-4 z-50 shadow-lg bg-white rounded-xl border border-gray-200 p-2 flex flex-col items-center"
+        className="fixed bottom-6 right-4 z-50 shadow-2xl bg-white/30 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-gray-700 p-2 flex flex-col items-center transition-all group"
         style={{
           width: 180,
           minHeight: 180,
-          boxShadow: "0 6px 32px 0 rgba(0,0,0,0.20)",
-          transition: "opacity .2s"
         }}
       >
         <button
-          className="absolute top-2 right-3 w-6 h-6 rounded-full bg-gray-200 text-gray-500 hover:text-red-500 flex items-center justify-center"
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-gradient-to-r from-pink-500 via-blue-500 to-purple-500 text-white shadow-[0_0_8px_#24eaffbb] hover:bg-pink-600 hover:scale-110 border border-white/20 flex items-center justify-center transition"
           onClick={onClose}
           title="Close"
-          style={{ fontSize: 19 }}
+          style={{ fontSize: 23 }}
         >
           ×
         </button>
         <img
           src={photos[index].url}
           alt={photos[index].name}
-          className="w-full h-28 object-cover rounded cursor-pointer"
-          style={{ objectFit: 'cover', maxWidth: '160px' }}
+          className="w-full h-28 object-cover rounded-xl border border-white/30 shadow-lg cursor-pointer transition hover:scale-105"
+          style={{ maxWidth: '160px' }}
           onClick={() => setShowLightbox(true)}
         />
-        <div className="truncate mt-2 text-xs text-gray-600 text-center" title={photos[index].name}>
+        <div className="truncate mt-2 text-xs font-medium text-blue-700 dark:text-blue-300 text-center" title={photos[index].name}>
           {photos[index].name}
         </div>
         <div className="flex gap-2 mt-1 items-center">
           <button
-            className="text-xl px-1 hover:text-blue-500"
+            className="text-xl px-1 hover:text-pink-500 font-bold"
             style={{ lineHeight: 1 }}
             onClick={goPrev}
             tabIndex={-1}
             aria-label="Previous photo"
           >⟨</button>
-          <span className="text-xs text-gray-400">{index + 1}/{photos.length}</span>
+          <span className="text-xs text-blue-400 dark:text-blue-300 bg-white/30 dark:bg-gray-900/30 rounded-full px-2">{index + 1}/{photos.length}</span>
           <button
-            className="text-xl px-1 hover:text-blue-500"
+            className="text-xl px-1 hover:text-pink-500 font-bold"
             style={{ lineHeight: 1 }}
             onClick={goNext}
             tabIndex={-1}
@@ -186,51 +175,41 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
       {/* Lightbox modal */}
       {showLightbox && (
         <div
-          className="fixed inset-0 bg-black/80 z-[999] flex items-center justify-center touch-pan-x"
-          style={{ animation: "fadeIn .2s" }}
+          className="fixed inset-0 bg-black/80 z- flex items-center justify-center fade-in"
           onClick={() => setShowLightbox(false)}
         >
           <div
             ref={lightboxRef}
-            className="relative"
+            className="relative rounded-3xl bg-white/30 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700 shadow-2xl p-6 transition-all"
             style={{ maxWidth: "90vw", maxHeight: "90vh" }}
             onClick={e => e.stopPropagation()}
           >
             <button
-              className="absolute top-2 right-2 bg-gray-700 text-white px-3 py-1 rounded-full text-lg shadow hover:bg-red-500"
+              className="absolute top-4 right-4 bg-gradient-to-r from-pink-500 via-blue-500 to-purple-400 text-white px-4 py-1 rounded-full text-lg shadow hover:scale-105 border border-white/20 backdrop-blur-lg"
               onClick={() => setShowLightbox(false)}
               title="Close"
             >×</button>
             <button
-              className="absolute top-1 left-2 text-white bg-black/[.10] px-2 py-1 rounded-full text-xl shadow"
-              style={{ top: "50%", transform: "translateY(-50%)" }}
+              className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/20 text-white px-2 py-1 rounded-full text-xl shadow"
               onClick={goPrev}
               title="Previous"
             >⟨</button>
             <img
               src={photos[index].url}
               alt={photos[index].name}
-              style={{
-                maxWidth: "90vw",
-                maxHeight: "80vh",
-                borderRadius: "12px",
-                boxShadow: "0 4px 32px #0009",
-                background: "#222",
-                display: "block",
-                margin: "0 auto"
-              }}
+              className="max-w-[89vw] max-h-[68vh] rounded-xl border border-white/30 shadow-xl mx-auto bg-white/20 dark:bg-gray-900/50"
             />
             <button
-              className="absolute top-1 right-10 text-white bg-black/[.10] px-2 py-1 rounded-full text-xl shadow"
-              style={{ top: "50%", transform: "translateY(-50%)" }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/20 text-white px-2 py-1 rounded-full text-xl shadow"
               onClick={goNext}
               title="Next"
             >⟩</button>
-            <div className="text-center text-white mt-2 text-base font-medium">
-              {photos[index].name} <span className="text-xs text-gray-300">{index+1}/{photos.length}</span>
+            <div className="text-center text-blue-700 dark:text-blue-200 mt-3 text-base font-semibold bg-white/20 dark:bg-gray-900/40 rounded-full px-4 py-2 inline-block shadow">
+              {photos[index].name} <span className="text-xs text-blue-400 dark:text-blue-300 ml-2">{index + 1}/{photos.length}</span>
             </div>
           </div>
           <style>{`
+            .fade-in { animation: fadeIn .2s; }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
         </div>

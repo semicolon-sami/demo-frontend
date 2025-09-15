@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import GalleryModal from "./GalleryModal";
-import PhotoSlideshow from "./PhotoSlideshow";
 import MiniPhotoPopup from "@/components/MiniPhotoPopup";
-
+import DarkModeToggle from "@/components/DarkModeToggle";
 // Typed song + favorite row
 type Song = { name: string; path: string; url: string };
 type FavoriteRow = { song_path: string; song_name?: string };
 
-// Accepts props for modal control, provided from parent page!
 type MusicPlayerProps = {
   onOpenGallery?: () => void;
   onOpenSlideshow?: () => void;
@@ -20,19 +17,17 @@ export default function MusicPlayer({
   onOpenGallery,
   onOpenSlideshow
 }: MusicPlayerProps) {
-  const [folder, setFolder] = useState<string>(""); // '' = root/all, 'recent', 'old', 'favorites'
+  const [folder, setFolder] = useState<string>("");
   const [songs, setSongs] = useState<Song[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
-  // Show mini popup by default!
   const [showMiniPopup, setShowMiniPopup] = useState(true);
 
   useEffect(() => {
     refreshAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folder]);
 
   async function fetchSongs() {
@@ -207,7 +202,7 @@ export default function MusicPlayer({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-blue-100 dark:from-[#181925] dark:to-[#1e2746] px-6 py-6 transition-all">
       {/* FLOATING MINI PHOTO POPUP */}
       {showMiniPopup && (
         <MiniPhotoPopup onClose={() => setShowMiniPopup(false)} />
@@ -216,14 +211,16 @@ export default function MusicPlayer({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">🎵 My Private Songs</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="font-extrabold text-3xl md:text-4xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-400 to-blue-500 mb-2">
+              🎵 My Private Songs
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Background play, one-player, favorites & upload
             </p>
           </div>
           <div className="flex items-center gap-2">
             <select
-              className="border p-1 rounded"
+              className="border border-white/20 dark:border-gray-700 p-1 rounded-lg bg-white/30 dark:bg-gray-900/40 backdrop-blur-lg shadow transition-all"
               value={folder}
               onChange={(e) => setFolder(e.target.value)}
             >
@@ -232,7 +229,7 @@ export default function MusicPlayer({
               <option value="old">Old</option>
               <option value="favorites">Favorites</option>
             </select>
-            <label className="bg-white border px-3 py-1 rounded cursor-pointer">
+            <label className="bg-white/30 dark:bg-gray-800/70 border border-white/20 dark:border-gray-700 px-3 py-1 rounded-lg cursor-pointer shadow transition-all backdrop-blur-lg text-blue-800 dark:text-blue-300">
               {uploading ? "Uploading…" : "Add song"}
               <input
                 type="file"
@@ -241,13 +238,22 @@ export default function MusicPlayer({
                 className="hidden"
               />
             </label>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                 {/* ... existing header ... */}
+              </div>
+              <div className="flex items-center gap-2">
+                 {/* ... existing controls ... */}
+                 <DarkModeToggle />
+              </div>
+            </div>
+            
             <button
               onClick={refreshAll}
-              className="px-3 py-1 border rounded hover:bg-gray-100"
+              className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:bg-blue-300/30 dark:hover:bg-blue-700/40"
             >
               Refresh
             </button>
-            
             <button
               onClick={() => window.open("/gallery", "_blank")}
               className="px-3 py-1 border rounded"
@@ -255,10 +261,16 @@ export default function MusicPlayer({
               Gallery
             </button>
 
-            {/* Show floating photos popup */}
+            <button
+              onClick={onOpenSlideshow}
+              className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:bg-purple-200/40 dark:hover:bg-purple-500/30"
+            >
+              Slideshow Only
+            </button>
+            
             <button
               onClick={() => setShowMiniPopup(true)}
-              className="px-3 py-1 border rounded"
+              className="px-3 py-1 rounded-lg bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all"
               disabled={showMiniPopup}
             >
               {showMiniPopup ? "Popup On" : "Show Photos"}
@@ -268,20 +280,19 @@ export default function MusicPlayer({
                 await fetch("/api/logout", { method: "POST" });
                 window.location.reload();
               }}
-              className="px-3 py-1 border rounded hover:bg-gray-100"
+              className="px-3 py-1 rounded-lg bg-white/50 dark:bg-gray-900/80 border border-white/20 dark:border-gray-700 text-gray-700 dark:text-gray-200 shadow transition-all hover:bg-red-100/40 dark:hover:bg-red-300/20"
             >
               Logout
             </button>
           </div>
         </div>
-
         {/* Player controls */}
         <div className="mb-4">
-          <div className="bg-white p-4 rounded shadow">
+          <div className="bg-white/40 dark:bg-gray-900/80 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700 transition-all">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm text-gray-500">Now playing</div>
-                <div className="font-medium truncate max-w-xs">
+                <div className="text-sm text-gray-500 dark:text-gray-400">Now playing</div>
+                <div className="font-semibold truncate max-w-xs text-blue-700 dark:text-blue-300">
                   {currentIndex !== null
                     ? songs[currentIndex]?.name ?? "—"
                     : "No track selected"}
@@ -290,7 +301,7 @@ export default function MusicPlayer({
               <div className="flex items-center gap-2">
                 <button
                   onClick={playPrev}
-                  className="px-3 py-1 border rounded hover:bg-gray-100"
+                  className="px-3 py-1 rounded-full bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:scale-105"
                 >
                   ⏮ Prev
                 </button>
@@ -303,13 +314,13 @@ export default function MusicPlayer({
                       else audioRef.current.pause();
                     }
                   }}
-                  className="px-3 py-1 border rounded hover:bg-gray-100"
+                  className="px-3 py-1 rounded-full bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:scale-110"
                 >
                   ⏯ Play/Pause
                 </button>
                 <button
                   onClick={playNext}
-                  className="px-3 py-1 border rounded hover:bg-gray-100"
+                  className="px-3 py-1 rounded-full bg-white/30 dark:bg-gray-800/40 border border-white/20 dark:border-gray-700 shadow transition-all hover:scale-105"
                 >
                   Next ⏭
                 </button>
@@ -320,7 +331,7 @@ export default function MusicPlayer({
               <audio
                 ref={audioRef}
                 controls
-                className="w-full"
+                className="w-full bg-white/30 dark:bg-gray-800/40 rounded-lg border border-white/20 dark:border-gray-700 shadow"
                 src={currentIndex !== null ? songs[currentIndex]?.url : undefined}
                 onEnded={playNext}
               />
@@ -330,42 +341,41 @@ export default function MusicPlayer({
         {/* Song list */}
         <div>
           {loading ? (
-            <p>Loading songs…</p>
+            <div className="animate-pulse rounded-xl bg-gray-200 dark:bg-gray-700 w-full h-32 mb-3" />
           ) : songs.length === 0 ? (
-            <p>No songs found.</p>
+            <p className="text-gray-600 dark:text-gray-300 py-6 text-center">No songs found.</p>
           ) : (
             <ul className="space-y-3">
               {songs.map((s, i) => (
                 <li
                   key={s.path}
-                  className="bg-white p-3 rounded shadow flex items-center justify-between"
+                  className="bg-white/30 dark:bg-gray-900/70 backdrop-blur-lg p-3 rounded-xl shadow-xl flex items-center justify-between border border-white/20 dark:border-gray-700 transition-all"
                 >
                   <div className="truncate max-w-xs">
-                    <div className="font-medium truncate">{s.name}</div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {s.path}
-                    </div>
+                    <div className="font-bold truncate text-blue-700 dark:text-blue-300">{s.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.path}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => playIndex(i)}
-                      className="px-2 py-1 border rounded hover:bg-gray-100"
+                      className="px-2 py-1 rounded-full bg-blue-100/70 dark:bg-blue-900/40 shadow hover:scale-105 transition-all border border-blue-200 dark:border-blue-800"
                     >
                       ▶ Play
                     </button>
                     <button
                       onClick={() => handleToggleFavorite(i)}
-                      className={`px-2 py-1 rounded ${
+                      className={`px-2 py-1 rounded-full font-bold shadow-lg transition-all border ${
                         favorites.includes(s.path)
-                          ? "bg-yellow-400"
-                          : "bg-gray-200"
+                          ? "bg-yellow-400/80 text-yellow-800 dark:bg-yellow-300 dark:text-yellow-900 shadow-[0_0_12px_#ffd700]"
+                          : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
                       }`}
+                      title="Toggle Favorite"
                     >
                       ★
                     </button>
                     <button
                       onClick={() => handleDelete(i)}
-                      className="px-2 py-1 border rounded text-red-600 hover:bg-red-100"
+                      className="px-2 py-1 border rounded-full text-red-600 dark:text-red-300 bg-white/30 dark:bg-gray-900/60 shadow hover:bg-red-100/30 dark:hover:bg-red-300/30 transition-all"
                     >
                       🗑 Delete
                     </button>

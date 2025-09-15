@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import FolderTabs from "@/components/FolderTabs";
 import CreateFolder from "@/components/CreateFolder";
 import UploadBox from "@/components/UploadBox";
@@ -210,67 +211,89 @@ export default function GalleryModal({ onClose }: { onClose: () => void }) {
     return () => clearInterval(timer);
   }, [slideshowActive, isLightboxOpen, media.length]);
 
-  // Modal UI with scrolling and control fixes
+  // GalleryModal fully upgraded UI:
   return (
-    <div className="relative max-w-5xl w-full mx-auto">
-      {/* Absolute close button, always visible */}
-      <button
-        className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 z-20"
-        onClick={onClose}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.93, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.90, y: 40 }}
+        transition={{ duration: 0.24 }}
+        className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center"
       >
-        Close ✕
-      </button>
-      {/* Modal container with limited height and scroll */}
-      <div className="min-h-[70vh] max-h-[90vh] overflow-y-auto bg-gray-50 p-6 rounded-xl shadow-lg">
-        <audio
-          ref={audioRef}
-          src="/slideshow-music.mp3"
-          loop
-          style={{ display: "none" }}
-        />
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">📷 My Gallery</h1>
-          </div>
-          <FolderTabs
-            folders={folders}
-            activeTab={activeTab}
-            onTabClick={setActiveTab}
-          />
-          <CreateFolder
-            value={newFolderName}
-            onValueChange={setNewFolderName}
-            onCreate={handleCreateFolder}
-          />
-          <UploadBox onUpload={handleUpload} />
-          {loading ? (
-            <p>Loading…</p>
-          ) : (
-            <div className="overflow-y-auto max-h-[60vh]">
-              <MediaGrid
-                media={media}
-                favorites={favorites}
-                onFavorite={toggleFavorite}
-                onDelete={deleteMedia}
-                onClickMedia={openLightbox}
+        <div className="relative max-w-5xl w-full mx-auto
+          rounded-2xl bg-white/30 dark:bg-gray-900/90
+          backdrop-blur-xl border border-white/30 dark:border-gray-700
+          shadow-2xl ring-2 ring-pink-400/30
+          transition-all min-h-[70vh] max-h-[90vh] overflow-y-auto px-8 py-7"
+        >
+          {/* Neon close button */}
+          <button
+            className="absolute top-4 right-5 px-3 py-1 rounded-full
+              bg-gradient-to-r from-pink-500 via-blue-500 to-purple-400
+              text-white shadow-[0_0_14px_#24eaff99]
+              hover:scale-105 transition border border-white/20 backdrop-blur-lg z-20"
+            onClick={onClose}
+          >
+            Close ✕
+          </button>
+          {/* Modal header: neon gradient headline */}
+          <h1 className="font-extrabold text-4xl md:text-5xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-400 to-blue-500 mb-2">
+            📷 My Gallery
+          </h1>
+          {/* Music for slideshow */}
+          <audio ref={audioRef} src="/slideshow-music.mp3" loop style={{ display: "none" }} />
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              {/* FolderTabs neon accent */}
+              <FolderTabs
+                folders={folders}
+                activeTab={activeTab}
+                onTabClick={setActiveTab}
               />
             </div>
-          )}
-          <Lightbox
-            open={isLightboxOpen}
-            media={media}
-            index={lightboxIndex}
-            onClose={closeLightbox}
-            onPrev={prev}
-            onNext={next}
-            onFavorite={toggleFavorite}
-            onDownload={downloadMedia}
-            onToggleSlideshow={() => setSlideshowActive((s) => !s)}
-            slideshowActive={slideshowActive}
-            favorites={favorites}
-          />
+            {/* CreateFolder glassy input/button */}
+            <CreateFolder
+              value={newFolderName}
+              onValueChange={setNewFolderName}
+              onCreate={handleCreateFolder}
+            />
+            {/* UploadBox glassy input/button */}
+            <UploadBox
+              onUpload={handleUpload}
+            />
+            {/* Loader */}
+            {loading ? (
+              <div className="animate-pulse rounded-xl bg-gray-200 dark:bg-gray-700 w-full h-32 mb-3" />
+            ) : (
+              <div className="overflow-y-auto max-h-[60vh]">
+                {/* MediaGrid glassy/neon upgrades via props or within it */}
+                <MediaGrid
+                  media={media}
+                  favorites={favorites}
+                  onFavorite={toggleFavorite}
+                  onDelete={deleteMedia}
+                  onClickMedia={openLightbox}
+                />
+              </div>
+            )}
+            {/* Lightbox glassy modal */}
+            <Lightbox
+              open={isLightboxOpen}
+              media={media}
+              index={lightboxIndex}
+              onClose={closeLightbox}
+              onPrev={prev}
+              onNext={next}
+              onFavorite={toggleFavorite}
+              onDownload={downloadMedia}
+              onToggleSlideshow={() => setSlideshowActive((s) => !s)}
+              slideshowActive={slideshowActive}
+              favorites={favorites}
+            />
+          </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
