@@ -6,10 +6,20 @@ import GalleryModal from "./GalleryModal";
 import PhotoSlideshow from "./PhotoSlideshow";
 import MiniPhotoPopup from "@/components/MiniPhotoPopup";
 
+// Typed song + favorite row
 type Song = { name: string; path: string; url: string };
 type FavoriteRow = { song_path: string; song_name?: string };
 
-export default function MusicPlayer() {
+// Accepts props for modal control, provided from parent page!
+type MusicPlayerProps = {
+  onOpenGallery?: () => void;
+  onOpenSlideshow?: () => void;
+};
+
+export default function MusicPlayer({
+  onOpenGallery,
+  onOpenSlideshow
+}: MusicPlayerProps) {
   const [folder, setFolder] = useState<string>(""); // '' = root/all, 'recent', 'old', 'favorites'
   const [songs, setSongs] = useState<Song[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -19,10 +29,6 @@ export default function MusicPlayer() {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   // Show mini popup by default!
   const [showMiniPopup, setShowMiniPopup] = useState(true);
-
-  // Two independent modal controls!
-  const [showGallery, setShowGallery] = useState(false);
-  const [showSlideshow, setShowSlideshow] = useState(false);
 
   useEffect(() => {
     refreshAll();
@@ -200,7 +206,6 @@ export default function MusicPlayer() {
     }
   }
 
-  // FIXED: Place this INSIDE the main return!
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* FLOATING MINI PHOTO POPUP */}
@@ -242,12 +247,18 @@ export default function MusicPlayer() {
             >
               Refresh
             </button>
-            {/* Open Gallery in new tab */}
+            {/* Use props for Gallery and Slideshow buttons */}
             <button
-              onClick={() => window.open("/gallery", "_blank")}
+              onClick={onOpenGallery}
               className="px-3 py-1 border rounded"
             >
               Gallery
+            </button>
+            <button
+              onClick={onOpenSlideshow}
+              className="px-3 py-1 border rounded"
+            >
+              Slideshow Only
             </button>
             {/* Show floating photos popup */}
             <button
@@ -370,33 +381,7 @@ export default function MusicPlayer() {
           )}
         </div>
       </div>
-      {/* Gallery/Slideshow modals unchanged */}
-      {showGallery && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur">
-          <div className="relative bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6">
-            <button
-              className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-              onClick={() => setShowGallery(false)}
-            >
-              Close ✕
-            </button>
-            <GalleryModal onClose={() => setShowGallery(false)} />
-          </div>
-        </div>
-      )}
-      {showSlideshow && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur">
-          <div className="relative bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6">
-            <button
-              className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-              onClick={() => setShowSlideshow(false)}
-            >
-              Close ✕
-            </button>
-            <PhotoSlideshow />
-          </div>
-        </div>
-      )}
+      {/* NO local modals here—the parent page provides modal handling! */}
     </div>
   );
 }
