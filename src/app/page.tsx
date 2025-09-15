@@ -1,25 +1,37 @@
-'use client'
-import { useEffect, useState } from 'react'
-import LoginForm from '@/components/LoginForm'
-import MusicPlayer from '@/components/MusicPlayer'
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import Login from "@/components/Login";
+import MusicPlayer from "@/components/MusicPlayer";
 
-export default function Page() {
-  const [auth, setAuth] = useState<boolean | null>(null)
+export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [songs, setSongs] = useState<{ name: string; url: string }[]>([]);
 
   useEffect(() => {
-    async function check() {
-      try {
-        const res = await fetch('/api/auth')
-        const j = await res.json()
-        setAuth(Boolean(j.authenticated))
-      } catch (err) {
-        setAuth(false)
-      }
-    }
-    check()
-  }, [])
+    const fetchSongs = async () => {
+      const { data, error } = await supabase.storage.from("songs").list("", {
+        limit: 100,
+        offset: 0,
+      });
+      if (error) return console.error(error);
 
-  if (auth === null) return <div className="p-6">Checking auth…</div>
-  if (!auth) return <LoginForm onLogin={() => setAuth(true)} />
-  return <MusicPlayer onLogout={() => setAuth(false)} />
+      const signedUrls = await Promise.all(
+        data.map(async (file) => {
+          const { data: urlData } = await supabase.storage
+            .from("songs")
+            .createSignedUrl(file.name, 60 * 60);
+          return { name: file.name, url: urlData?.signedUrl || "" };
+        })
+      );
+
+      setSongs(signedUrls);
+    };
+
+    if (isLoggedIn) fetchSongs();
+  }, [isLoggedIn]);
+
+  if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
+
+  return <MusicPlayer initialSongs={songs} />;
 }
