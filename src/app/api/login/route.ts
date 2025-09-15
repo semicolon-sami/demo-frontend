@@ -8,7 +8,15 @@ export async function POST(req: Request) {
       username === process.env.LOGIN_USER &&
       password === process.env.LOGIN_PASS
     ) {
-      return NextResponse.json({ success: true })
+      // Set the 'authenticated' cookie on successful login
+      const response = NextResponse.json({ success: true });
+      response.cookies.set('authenticated', '1', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7 // one week
+      });
+      return response;
     }
 
     return NextResponse.json(

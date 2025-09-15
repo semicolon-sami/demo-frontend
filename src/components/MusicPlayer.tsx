@@ -278,12 +278,13 @@ export default function MusicPlayer({
             <button
               onClick={async () => {
                 await fetch("/api/logout", { method: "POST" });
-                window.location.reload();
+                window.location.href = "/login"; // <-- Redirect on logout
               }}
               className="px-3 py-1 rounded-lg bg-white/50 dark:bg-gray-900/80 border border-white/20 dark:border-gray-700 text-gray-700 dark:text-gray-200 shadow transition-all hover:bg-red-100/40 dark:hover:bg-red-300/20"
             >
               Logout
             </button>
+
           </div>
         </div>
         {/* Player controls */}

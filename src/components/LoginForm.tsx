@@ -1,12 +1,7 @@
 'use client'
-
 import { useState } from 'react'
 
-export default function LoginForm({
-  onLogin,
-}: {
-  onLogin: (username: string, password: string) => void
-}) {
+export default function LoginForm() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -14,10 +9,19 @@ export default function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      onLogin(username, password)
+      const res = await fetch("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = "/"; // or window.location.reload()
+      } else {
+        setError(data.error || "Login failed");
+      }
     } catch (err) {
-      console.error(err)
-      setError('Login failed')
+      setError("Login failed");
     }
   }
 
@@ -27,21 +31,19 @@ export default function LoginForm({
       className="p-6 max-w-md mx-auto bg-white shadow rounded"
     >
       <h1 className="text-xl font-bold mb-4">🔒 Private Login</h1>
-
       {error && <p className="text-red-500 mb-2">{error}</p>}
-
       <input
         type="text"
         placeholder="Username"
         value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        onChange={e => setUsername(e.target.value)}
         className="w-full border p-2 mb-2 rounded"
       />
       <input
         type="password"
         placeholder="Password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={e => setPassword(e.target.value)}
         className="w-full border p-2 mb-4 rounded"
       />
       <button
