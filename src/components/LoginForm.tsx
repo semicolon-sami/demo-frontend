@@ -1,49 +1,55 @@
-"use client";
-import { useState } from "react";
+'use client'
 
-export default function LoginForm({ onLogin }: { onLogin: () => void }) {
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+import { useState } from 'react'
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+export default function LoginForm({
+  onLogin,
+}: {
+  onLogin: (username: string, password: string) => void
+}) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        onLogin();
-      } else {
-        setError("Wrong password");
-      }
+      onLogin(username, password)
     } catch (err) {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+      console.error(err)
+      setError('Login failed')
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white p-6 rounded shadow">
-        <h2 className="text-xl font-bold mb-4 text-center">🔒 Login</h2>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter password"
-          className="w-full p-2 border rounded mb-3"
-        />
-        <button disabled={loading} className="w-full bg-purple-600 text-white py-2 rounded">
-          {loading ? "Logging in…" : "Login"}
-        </button>
-        {error && <p className="text-red-600 mt-3">{error}</p>}
-      </form>
-    </div>
-  );
+    <form
+      onSubmit={handleSubmit}
+      className="p-6 max-w-md mx-auto bg-white shadow rounded"
+    >
+      <h1 className="text-xl font-bold mb-4">🔒 Private Login</h1>
+
+      {error && <p className="text-red-500 mb-2">{error}</p>}
+
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        className="w-full border p-2 mb-2 rounded"
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="w-full border p-2 mb-4 rounded"
+      />
+      <button
+        type="submit"
+        className="w-full bg-blue-500 text-white p-2 rounded"
+      >
+        Login
+      </button>
+    </form>
+  )
 }

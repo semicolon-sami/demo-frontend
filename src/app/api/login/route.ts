@@ -1,21 +1,25 @@
+import { NextResponse } from 'next/server'
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const pw = body.password;
-    if (!pw || pw !== process.env.BASIC_PASS) {
-      return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { "Content-Type": "application/json" } });
+    const { username, password } = await req.json()
+
+    if (
+      username === process.env.LOGIN_USER &&
+      password === process.env.LOGIN_PASS
+    ) {
+      return NextResponse.json({ success: true })
     }
 
-    // set httpOnly cookie
-    const cookie = `authenticated=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`;
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        "Set-Cookie": cookie,
-        "Content-Type": "application/json",
-      },
-    });
+    return NextResponse.json(
+      { success: false, error: 'Invalid credentials' },
+      { status: 401 }
+    )
   } catch (err) {
-    return new Response(JSON.stringify({ ok: false }), { status: 400, headers: { "Content-Type": "application/json" } });
+    console.error(err)
+    return NextResponse.json(
+      { success: false, error: 'Something went wrong' },
+      { status: 500 }
+    )
   }
 }
