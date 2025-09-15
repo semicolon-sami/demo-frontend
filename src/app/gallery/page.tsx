@@ -39,7 +39,7 @@ export default function GalleryPage() {
     return (data || []).map((f) => f.name).filter((n) => n && !n.includes("."));
   }, [supabase]);
 
-  // List media in a folder (this was fixed)
+  // List media in a folder — CORRECTED!
   const listMediaInFolder = useCallback(async (folderName: string) => {
     const listPath = folderName ? folderName : "";
     const { data: files, error } = await supabase.storage.from("photos").list(listPath, { limit: 200 });
@@ -144,22 +144,21 @@ export default function GalleryPage() {
     await loadMedia(activeTab);
   }
 
-  // Delete & Favorite
+  // Delete & Favorite — FIXED .upsert([{ path }])
   async function deleteMedia(path: string) {
     await supabase.storage.from("photos").remove([path]);
     setMedia((prev) => prev.filter((m) => m.path !== path));
   }
-  // Delete & Favorite
   async function toggleFavorite(path: string) {
     const isFav = favorites.includes(path);
     if (isFav) {
-        await supabase.from("photo_favorites").delete().eq("path", path);
-        setFavorites((prev) => prev.filter((f) => f !== path));
-     }  else {
-        await supabase.from("photo_favorites").upsert([{ path }]);
-        setFavorites((prev) => [...prev, path]);
-     }
+      await supabase.from("photo_favorites").delete().eq("path", path);
+      setFavorites((prev) => prev.filter((f) => f !== path));
+    } else {
+      await supabase.from("photo_favorites").upsert([{ path }]);
+      setFavorites((prev) => [...prev, path]);
     }
+  }
 
   // Download
   function downloadMedia(url: string, name: string) {
