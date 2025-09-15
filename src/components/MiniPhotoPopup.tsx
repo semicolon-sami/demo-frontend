@@ -2,6 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
+// For files returned from Supabase listing (no URL yet)
+type FileDescriptor = { name: string; path: string };
+// For files with signed URLs
 type Photo = { name: string; path: string; url: string };
 
 export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
@@ -14,10 +17,13 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     async function loadPhotos() {
       setLoading(true);
-      // List folders (grabs folders, not files)
+
+      // Get folder names
       const { data: folders } = await supabase.storage.from("photos").list("", { limit: 100 });
       const folderNames = (folders || []).map(f => f.name).filter(n => !!n && !n.includes("."));
-      async function getPhotoFiles(folder: string) {
+
+      // List files from folders and root; do not attach URL yet
+      async function getPhotoFiles(folder: string): Promise<FileDescriptor[]> {
         const { data: files } = await supabase.storage.from("photos").list(folder, { limit: 100 });
         return (files || []).filter(f =>
           f.name && /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name)
@@ -26,16 +32,17 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
           path: folder ? `${folder}/${f.name}` : f.name,
         }));
       }
-      let fileList: Photo[] = [];
+
+      let fileList: FileDescriptor[] = [];
       for (const folder of folderNames) {
         fileList = fileList.concat(await getPhotoFiles(folder));
       }
       fileList = fileList.concat(await getPhotoFiles(""));
 
-      // Get signed URLs in parallel
-      const withUrls: Photo[] = await Promise.all(
+      // Now fetch signed URL for each, to turn into Photo[]
+      const withUrls: (Photo | null)[] = await Promise.all(
         fileList.map(async f => {
-          const { data, error } = await supabase.storage
+          const { data } = await supabase.storage
             .from("photos")
             .createSignedUrl(f.path, 60 * 60);
           return data?.signedUrl
@@ -43,7 +50,8 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
             : null;
         })
       );
-      const validPhotos = withUrls.filter(p => !!p && !!p.url) as Photo[];
+
+      const validPhotos: Photo[] = withUrls.filter((p): p is Photo => !!p && !!p.url);
       // Shuffle for random order
       for (let i = validPhotos.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -65,6 +73,7 @@ export default function MiniPhotoPopup({ onClose }: { onClose: () => void }) {
     return () => clearInterval(timer);
   }, [photos, loading]);
 
+  // Auto-close on tab hide
   useEffect(() => {
     function handleVisibility() {
       if (document.visibilityState === "hidden") onClose();
