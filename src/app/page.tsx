@@ -155,7 +155,7 @@ export default function GalleryPage() {
       await supabase.from("photo_favorites").delete().eq("path", path);
       setFavorites((prev) => prev.filter((f) => f !== path));
     } else {
-      await supabase.from("photo_favorites").insert({ path }, { upsert: true });
+      await supabase.from("photo_favorites").upsert({ path }, { upsert: true });
       setFavorites((prev) => [...prev, path]);
     }
   }
