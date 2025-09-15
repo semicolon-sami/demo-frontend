@@ -10,53 +10,61 @@ type Song = {
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSongs = async () => {
-      // 1. List files in "songs" bucket
-      const { data: files, error } = await supabase.storage.from("songs").list();
+    async function fetchSongs() {
+      // 1. List all files in the bucket
+      const { data: files, error } = await supabase.storage
+        .from("songs")
+        .list("", { limit: 100 });
+
       if (error) {
-        console.error("Error listing files:", error);
+        console.error("List error:", error);
+        setLoading(false);
         return;
       }
 
-      if (!files) return;
+      if (!files || files.length === 0) {
+        console.log("No files found in Supabase bucket");
+        setLoading(false);
+        return;
+      }
 
-      // 2. For each file, generate signed URL
+      // 2. Get signed URLs for each file
       const signedSongs: Song[] = await Promise.all(
         files.map(async (file) => {
-          const { data: signedUrlData } = await supabase.storage
+          const { data } = await supabase.storage
             .from("songs")
-            .createSignedUrl(file.name, 60 * 60); // valid for 1 hr
+            .createSignedUrl(file.name, 60 * 60); // valid 1h
 
-          return {
-            name: file.name,
-            url: signedUrlData?.signedUrl || "",
-          };
+          return { name: file.name, url: data?.signedUrl || "" };
         })
       );
 
       setSongs(signedSongs);
-    };
+      setLoading(false);
+    }
 
     fetchSongs();
   }, []);
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">🎵 My Private Songs</h1>
-      {songs.length === 0 ? (
-        <p>No songs found.</p>
-      ) : (
-        <ul className="space-y-4">
-          {songs.map((song) => (
-            <li key={song.name}>
-              <p className="font-medium">{song.name}</p>
-              <audio controls src={song.url} className="w-full mt-1" />
-            </li>
-          ))}
-        </ul>
-      )}
+    <main className="flex flex-col items-center justify-center min-h-screen p-6">
+      <h1 className="text-2xl font-bold mb-6">🎵 My Private Songs</h1>
+
+      {loading && <p>Loading songs...</p>}
+
+      {!loading && songs.length === 0 && <p>No songs found.</p>}
+
+      <ul className="space-y-4 w-full max-w-md">
+        {songs.map((song) => (
+          <li key={song.name} className="flex flex-col items-center">
+            <p className="mb-2">{song.name}</p>
+            <audio controls src={song.url} className="w-full" />
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }
