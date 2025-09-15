@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
+import PhotoSlideshow from "./PhotoSlideshow";
 // Typed song + favorite row
 type Song = { name: string; path: string; url: string };
 type FavoriteRow = { song_path: string; song_name?: string };
@@ -243,6 +243,12 @@ export default function MusicPlayer() {
               Refresh
             </button>
             <button
+              onClick={() => window.open("/gallery", "_blank")}
+              className="px-3 py-1 border rounded"
+            >
+              Gallery
+            </button>
+            <button
               onClick={async () => {
                 await fetch("/api/logout", { method: "POST" });
                 window.location.reload();
@@ -364,3 +370,4 @@ export default function MusicPlayer() {
     </div>
   );
 }
+<PhotoSlideshow />
