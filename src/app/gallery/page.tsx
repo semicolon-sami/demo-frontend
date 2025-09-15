@@ -149,16 +149,17 @@ export default function GalleryPage() {
     await supabase.storage.from("photos").remove([path]);
     setMedia((prev) => prev.filter((m) => m.path !== path));
   }
+  // Delete & Favorite
   async function toggleFavorite(path: string) {
     const isFav = favorites.includes(path);
     if (isFav) {
-      await supabase.from("photo_favorites").delete().eq("path", path);
-      setFavorites((prev) => prev.filter((f) => f !== path));
-    } else {
-      await supabase.from("photo_favorites").insert({ path }, { upsert: true });
-      setFavorites((prev) => [...prev, path]);
+        await supabase.from("photo_favorites").delete().eq("path", path);
+        setFavorites((prev) => prev.filter((f) => f !== path));
+     }  else {
+        await supabase.from("photo_favorites").upsert([{ path }]);
+        setFavorites((prev) => [...prev, path]);
+     }
     }
-  }
 
   // Download
   function downloadMedia(url: string, name: string) {
