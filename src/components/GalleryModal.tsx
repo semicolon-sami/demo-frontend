@@ -15,7 +15,7 @@ type Media = {
   type: "image" | "video";
 };
 
-export default function HomePage() {
+export default function GalleryModal({ onClose }: { onClose: () => void }) {
   const [folders, setFolders] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
   const [media, setMedia] = useState<Media[]>([]);
@@ -210,59 +210,66 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [slideshowActive, isLightboxOpen, media.length]);
 
+  // Modal UI with scrolling and control fixes
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <audio
-        ref={audioRef}
-        src="/slideshow-music.mp3"
-        loop
-        style={{ display: "none" }}
-      />
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">📷 My Gallery</h1>
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="px-3 py-1 border rounded"
-          >
-            Back
-          </button>
-        </div>
-        <FolderTabs
-          folders={folders}
-          activeTab={activeTab}
-          onTabClick={setActiveTab}
+    <div className="relative max-w-5xl w-full mx-auto">
+      {/* Absolute close button, always visible */}
+      <button
+        className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 z-20"
+        onClick={onClose}
+      >
+        Close ✕
+      </button>
+      {/* Modal container with limited height and scroll */}
+      <div className="min-h-[70vh] max-h-[90vh] overflow-y-auto bg-gray-50 p-6 rounded-xl shadow-lg">
+        <audio
+          ref={audioRef}
+          src="/slideshow-music.mp3"
+          loop
+          style={{ display: "none" }}
         />
-        <CreateFolder
-          value={newFolderName}
-          onValueChange={setNewFolderName}
-          onCreate={handleCreateFolder}
-        />
-        <UploadBox onUpload={handleUpload} />
-        {loading ? (
-          <p>Loading…</p>
-        ) : (
-          <MediaGrid
-            media={media}
-            favorites={favorites}
-            onFavorite={toggleFavorite}
-            onDelete={deleteMedia}
-            onClickMedia={openLightbox}
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">📷 My Gallery</h1>
+          </div>
+          <FolderTabs
+            folders={folders}
+            activeTab={activeTab}
+            onTabClick={setActiveTab}
           />
-        )}
-        <Lightbox
-          open={isLightboxOpen}
-          media={media}
-          index={lightboxIndex}
-          onClose={closeLightbox}
-          onPrev={prev}
-          onNext={next}
-          onFavorite={toggleFavorite}
-          onDownload={downloadMedia}
-          onToggleSlideshow={() => setSlideshowActive((s) => !s)}
-          slideshowActive={slideshowActive}
-          favorites={favorites}
-        />
+          <CreateFolder
+            value={newFolderName}
+            onValueChange={setNewFolderName}
+            onCreate={handleCreateFolder}
+          />
+          <UploadBox onUpload={handleUpload} />
+          {loading ? (
+            <p>Loading…</p>
+          ) : (
+            <div className="overflow-y-auto max-h-[60vh]">
+              <MediaGrid
+                media={media}
+                favorites={favorites}
+                onFavorite={toggleFavorite}
+                onDelete={deleteMedia}
+                onClickMedia={openLightbox}
+              />
+            </div>
+          )}
+          <Lightbox
+            open={isLightboxOpen}
+            media={media}
+            index={lightboxIndex}
+            onClose={closeLightbox}
+            onPrev={prev}
+            onNext={next}
+            onFavorite={toggleFavorite}
+            onDownload={downloadMedia}
+            onToggleSlideshow={() => setSlideshowActive((s) => !s)}
+            slideshowActive={slideshowActive}
+            favorites={favorites}
+          />
+        </div>
       </div>
     </div>
   );

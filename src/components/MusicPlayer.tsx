@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import GalleryModal from "./GalleryModal";
 import PhotoSlideshow from "./PhotoSlideshow";
-// Typed song + favorite row
+import MiniPhotoPopup from "@/components/MiniPhotoPopup";
+
 type Song = { name: string; path: string; url: string };
 type FavoriteRow = { song_path: string; song_name?: string };
 
@@ -15,13 +17,18 @@ export default function MusicPlayer() {
   const [uploading, setUploading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+  // Show mini popup by default!
+  const [showMiniPopup, setShowMiniPopup] = useState(true);
+
+  // Two independent modal controls!
+  const [showGallery, setShowGallery] = useState(false);
+  const [showSlideshow, setShowSlideshow] = useState(false);
 
   useEffect(() => {
     refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folder]);
 
-  // Fetch songs (supports folder and favorites view)
   async function fetchSongs() {
     setLoading(true);
     try {
@@ -89,7 +96,6 @@ export default function MusicPlayer() {
     await Promise.all([fetchSongs(), fetchFavorites()]);
   }
 
-  // Play controls
   function playIndex(i: number) {
     if (i < 0 || i >= songs.length) return;
     setCurrentIndex(i);
@@ -116,7 +122,6 @@ export default function MusicPlayer() {
     playIndex(prev);
   }
 
-  // Upload
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -138,7 +143,6 @@ export default function MusicPlayer() {
     }
   }
 
-  // Delete
   async function handleDelete(i: number) {
     const song = songs[i];
     if (!song) return;
@@ -158,7 +162,6 @@ export default function MusicPlayer() {
     }
   }
 
-  // Favorites toggle
   async function handleToggleFavorite(i: number) {
     const s = songs[i];
     if (!s) return;
@@ -176,7 +179,6 @@ export default function MusicPlayer() {
     }
   }
 
-  // Media Session API
   function updateMediaSession(track: Song) {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -189,12 +191,8 @@ export default function MusicPlayer() {
     });
 
     try {
-      navigator.mediaSession.setActionHandler("play", () =>
-        audioRef.current?.play()
-      );
-      navigator.mediaSession.setActionHandler("pause", () =>
-        audioRef.current?.pause()
-      );
+      navigator.mediaSession.setActionHandler("play", () => audioRef.current?.play());
+      navigator.mediaSession.setActionHandler("pause", () => audioRef.current?.pause());
       navigator.mediaSession.setActionHandler("previoustrack", playPrev);
       navigator.mediaSession.setActionHandler("nexttrack", playNext);
     } catch {
@@ -202,8 +200,13 @@ export default function MusicPlayer() {
     }
   }
 
+  // FIXED: Place this INSIDE the main return!
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* FLOATING MINI PHOTO POPUP */}
+      {showMiniPopup && (
+        <MiniPhotoPopup onClose={() => setShowMiniPopup(false)} />
+      )}
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -213,7 +216,6 @@ export default function MusicPlayer() {
               Background play, one-player, favorites & upload
             </p>
           </div>
-
           <div className="flex items-center gap-2">
             <select
               className="border p-1 rounded"
@@ -225,7 +227,6 @@ export default function MusicPlayer() {
               <option value="old">Old</option>
               <option value="favorites">Favorites</option>
             </select>
-
             <label className="bg-white border px-3 py-1 rounded cursor-pointer">
               {uploading ? "Uploading…" : "Add song"}
               <input
@@ -235,18 +236,26 @@ export default function MusicPlayer() {
                 className="hidden"
               />
             </label>
-
             <button
               onClick={refreshAll}
               className="px-3 py-1 border rounded hover:bg-gray-100"
             >
               Refresh
             </button>
+            {/* Open Gallery in new tab */}
             <button
               onClick={() => window.open("/gallery", "_blank")}
               className="px-3 py-1 border rounded"
             >
               Gallery
+            </button>
+            {/* Show floating photos popup */}
+            <button
+              onClick={() => setShowMiniPopup(true)}
+              className="px-3 py-1 border rounded"
+              disabled={showMiniPopup}
+            >
+              {showMiniPopup ? "Popup On" : "Show Photos"}
             </button>
             <button
               onClick={async () => {
@@ -272,7 +281,6 @@ export default function MusicPlayer() {
                     : "No track selected"}
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={playPrev}
@@ -301,7 +309,6 @@ export default function MusicPlayer() {
                 </button>
               </div>
             </div>
-
             {/* Global audio element */}
             <div className="mt-3">
               <audio
@@ -314,7 +321,6 @@ export default function MusicPlayer() {
             </div>
           </div>
         </div>
-
         {/* Song list */}
         <div>
           {loading ? (
@@ -334,7 +340,6 @@ export default function MusicPlayer() {
                       {s.path}
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => playIndex(i)}
@@ -342,7 +347,6 @@ export default function MusicPlayer() {
                     >
                       ▶ Play
                     </button>
-
                     <button
                       onClick={() => handleToggleFavorite(i)}
                       className={`px-2 py-1 rounded ${
@@ -353,7 +357,6 @@ export default function MusicPlayer() {
                     >
                       ★
                     </button>
-
                     <button
                       onClick={() => handleDelete(i)}
                       className="px-2 py-1 border rounded text-red-600 hover:bg-red-100"
@@ -367,7 +370,33 @@ export default function MusicPlayer() {
           )}
         </div>
       </div>
+      {/* Gallery/Slideshow modals unchanged */}
+      {showGallery && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur">
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6">
+            <button
+              className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              onClick={() => setShowGallery(false)}
+            >
+              Close ✕
+            </button>
+            <GalleryModal onClose={() => setShowGallery(false)} />
+          </div>
+        </div>
+      )}
+      {showSlideshow && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur">
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6">
+            <button
+              className="absolute top-3 right-4 px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              onClick={() => setShowSlideshow(false)}
+            >
+              Close ✕
+            </button>
+            <PhotoSlideshow />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-<PhotoSlideshow />
