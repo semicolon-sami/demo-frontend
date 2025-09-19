@@ -26,10 +26,9 @@ export default function DiaryEntryPage() {
       .finally(() => setLoading(false));
   }, [entryId]);
 
-  if (loading) return <div className="text-center p-10">Loading...</div>;
-  if (error) return <div className="text-center text-red-600 p-10">{error}</div>;
-  if (!entry) return <div className="text-center text-gray-400 p-10">Entry not found.</div>;
-
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
+    if (!entry) return <div>No entry loaded.</div>;
   return (
     <main className="max-w-2xl mx-auto py-6 px-3">
       <button
