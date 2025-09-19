@@ -1,10 +1,14 @@
-// src/app/page.tsx
+import { cookies } from "next/headers";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { redirect } from "next/navigation";
 
-"use client";
-import { useRouter } from "next/navigation";
+export default async function LandingPage() {
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
 
-export default function LandingPage() {
-  const router = useRouter();
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-pink-100 dark:from-gray-900 dark:to-blue-950 transition-all">
@@ -15,36 +19,37 @@ export default function LandingPage() {
         This is your private music, gallery, and diary portal. Choose what you want to do!
       </p>
       <div className="flex gap-8 flex-wrap">
-        <button
+        <a
           className="px-8 py-3 rounded-full font-bold bg-blue-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          onClick={() => router.push("/music")}
+          href="/music"
         >
           Go to Music Player
-        </button>
-        <button
+        </a>
+        <a
           className="px-8 py-3 rounded-full font-bold bg-pink-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          onClick={() => window.open("/gallery", "_blank")}
+          href="/gallery"
+          target="_blank"
         >
           View Gallery (new tab)
-        </button>
-        <button
+        </a>
+        <a
           className="px-8 py-3 rounded-full font-bold bg-blue-800 text-white shadow-lg text-lg hover:scale-105 transition"
-          onClick={() => router.push("/diary")}
+          href="/diary"
         >
           Open Diary
-        </button>
-        <button
+        </a>
+        <a
           className="px-8 py-3 rounded-full font-bold bg-purple-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          onClick={() => router.push("/biography")}
+          href="/biography"
         >
           My Biography
-        </button>
-        <button
+        </a>
+        <a
           className="px-8 py-3 rounded-full font-bold bg-green-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          onClick={() => router.push("/future-plans")}
+          href="/future-plans"
         >
           Future Plans
-        </button>
+        </a>
       </div>
     </main>
   );
