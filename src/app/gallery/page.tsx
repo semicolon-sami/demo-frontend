@@ -1,5 +1,5 @@
 "use client";
-import AuthGuard from "@/components/AuthGuard";
+import AuthGuard from "@/components/login/AuthGuard";
 import { useEffect, useState, useCallback, useRef } from "react";
 import FolderTabs from "@/components/FolderTabs";
 import CreateFolder from "@/components/CreateFolder";
