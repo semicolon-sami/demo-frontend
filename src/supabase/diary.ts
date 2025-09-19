@@ -1,7 +1,14 @@
 // /src/supabase/diary.ts
 
-import { supabase } from "@/lib/supabase";
-import { User } from "@supabase/supabase-js";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+const supabase = createClientComponentClient();
+
+export type DiaryMedia = {
+  url: string;
+  type: "image" | "video";
+  name: string;
+  tags?: string[];
+};
 
 export type DiaryEntry = {
   id: string;
@@ -14,16 +21,9 @@ export type DiaryEntry = {
   tags: string[];
 };
 
-export type DiaryMedia = {
-  url: string;
-  type: "image" | "video";
-  name: string;
-  tags?: string[]; // AI-generated tags for this media
-};
-
 // ----------- ENTRIES CRUD -----------
 
-// Create a new diary entry
+// Create a new diary entry (public/no-auth, sets user_id = null)
 export async function createDiaryEntry({
   title,
   content,
@@ -35,21 +35,15 @@ export async function createDiaryEntry({
   media?: DiaryMedia[];
   tags?: string[];
 }) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Not logged in!");
-
   const { data, error } = await supabase
     .from("diary_entries")
     .insert([
       {
-        user_id: user.id,
         title,
         content,
         media,
         tags,
+        // If you want to default user_id to null, you can leave it out or set user_id: null
       },
     ])
     .select()
@@ -59,39 +53,24 @@ export async function createDiaryEntry({
   return data as DiaryEntry;
 }
 
-// List all diary entries for the current user
-export async function getDiaryEntries() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Not logged in!");
-
+// List all diary entries (public: shows all)
+export async function getDiaryEntries(): Promise<DiaryEntry[]> {
   const { data, error } = await supabase
     .from("diary_entries")
     .select("*")
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
   return (data || []) as DiaryEntry[];
 }
 
-// Get a single diary entry by id
-export async function getDiaryEntry(id: string) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Not logged in!");
-
+// Get a single diary entry by id (public)
+export async function getDiaryEntry(id: string): Promise<DiaryEntry> {
   const { data, error } = await supabase
     .from("diary_entries")
     .select("*")
-    .eq("user_id", user.id)
     .eq("id", id)
     .single();
-
   if (error) throw error;
   return data as DiaryEntry;
 }
@@ -139,19 +118,10 @@ export async function deleteDiaryEntry(id: string) {
 // ----------- MEDIA UPLOADS -----------
 
 // Upload image or video to Supabase Storage
-export async function uploadDiaryMedia(file: File, user?: User) {
-  if (!user) {
-    const {
-      data: { user: currentUser },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !currentUser) throw new Error("Not logged in!");
-    user = currentUser;
-  }
-
+export async function uploadDiaryMedia(file: File) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-  const filePath = `${user.id}/${fileName}`;
+  const filePath = `${fileName}`;
 
   // Upload to "diary_media" storage bucket
   const { error } = await supabase.storage.from("diary_media").upload(filePath, file, {
@@ -175,18 +145,11 @@ export async function uploadDiaryMedia(file: File, user?: User) {
 
 // ----------- SEARCH / FILTER / TAGS -----------
 
-// Search diary entries by keyword (title/content/tags)
-export async function searchDiaryEntries(keyword: string) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Not logged in!");
-
+// Search diary entries by keyword (title/content/tags), public search
+export async function searchDiaryEntries(keyword: string): Promise<DiaryEntry[]> {
   const { data, error } = await supabase
     .from("diary_entries")
     .select("*")
-    .eq("user_id", user.id)
     .or(
       `title.ilike.%${keyword}%,content::text.ilike.%${keyword}%,tags.cs.{${keyword}}`
     )
@@ -196,18 +159,11 @@ export async function searchDiaryEntries(keyword: string) {
   return (data || []) as DiaryEntry[];
 }
 
-// Get all distinct tags for tag filter UI
+// Get all distinct tags for tag filter UI (public, shows all)
 export async function getDiaryTags() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Not logged in!");
-
   const { data, error } = await supabase
     .from("diary_entries")
-    .select("tags")
-    .eq("user_id", user.id);
+    .select("tags");
 
   if (error) throw error;
   const tags = new Set<string>();
