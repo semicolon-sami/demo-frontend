@@ -30,6 +30,7 @@ export default function DiaryPage() {
         }
       } catch (e: any) {
         setError(e.message || "Failed to load diary entries.");
+        setEntries([]);
       } finally {
         setLoading(false);
       }
@@ -40,7 +41,6 @@ export default function DiaryPage() {
   }, [search]);
 
   const handleEntryClick = (id: string) => {
-    // Navigate to the dynamic route for this entry
     router.push(`/diary/${id}`);
   };
 
@@ -54,10 +54,19 @@ export default function DiaryPage() {
 
       <DiarySearchBar value={search} onSearch={handleSearch} />
 
-      {loading && <div className="text-center py-10">Loading diary entries...</div>}
-      {error && <div className="text-red-600 text-center py-4">{error}</div>}
+      {loading && <div className="text-center py-10 animate-pulse text-blue-500">Loading diary entries...</div>}
 
-      {!loading && !error && (
+      {error && !loading && (
+        <div className="text-red-600 text-center py-4">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && entries.length === 0 && (
+        <div className="text-center py-10 text-gray-400">No diary entries found.</div>
+      )}
+
+      {!loading && !error && entries.length > 0 && (
         <DiaryList entries={entries} onEntryClick={handleEntryClick} />
       )}
 
@@ -65,7 +74,7 @@ export default function DiaryPage() {
       <div className="flex justify-center mt-8">
         <button
           onClick={() => router.push("/diary/new")}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-lg shadow"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-lg shadow transition"
         >
           + New Entry
         </button>
