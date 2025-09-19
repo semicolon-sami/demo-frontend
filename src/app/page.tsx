@@ -1,16 +1,5 @@
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { redirect } from "next/navigation";
-
-export default async function LandingPage() {
-  // PASS THE FUNCTION, NOT THE RESULT!
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
+// Auth removed: all features are now public and accessible
+export default function LandingPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-pink-100 dark:from-gray-900 dark:to-blue-950 transition-all">
       <h1 className="mb-8 text-4xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-500 to-blue-500 text-transparent bg-clip-text">
