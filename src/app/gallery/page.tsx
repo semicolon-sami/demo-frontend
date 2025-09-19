@@ -8,7 +8,6 @@ import MediaGrid from "@/components/MediaGrid";
 import Lightbox from "@/components/Lightbox";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-// Inline Media type for convenience
 type Media = {
   name: string;
   path: string;
@@ -16,7 +15,7 @@ type Media = {
   type: "image" | "video";
 };
 
-export default function HomePage() {
+export default function GalleryPage() {
   const [folders, setFolders] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
   const [media, setMedia] = useState<Media[]>([]);
@@ -47,7 +46,7 @@ export default function HomePage() {
     if (error) return [];
     const signed = await Promise.all(
       (files || []).map(async (f) => {
-        if (!f.name || f.name.endsWith('/')) return null;
+        if (!f.name || f.name.endsWith("/")) return null;
         const path = listPath ? `${listPath}/${f.name}` : f.name;
         const { data } = await supabase.storage.from("photos").createSignedUrl(path, 60 * 60 * 24);
         const type = f.name.match(/\.(mp4|mov|webm)$/i) ? "video" : "image";
@@ -122,7 +121,7 @@ export default function HomePage() {
   }, [activeTab]);
 
   // Upload handler
-  async function handleUpload(files: FileList | null) {
+  const handleUpload = useCallback(async (files: FileList | null) => {
     if (!files) return;
     const folder = activeTab === "All" ? "" : activeTab;
     for (const file of Array.from(files)) {
@@ -130,27 +129,26 @@ export default function HomePage() {
       await supabase.storage.from("photos").upload(filePath, file, { upsert: true });
     }
     await loadMedia(activeTab);
-  }
+  }, [activeTab, supabase, loadMedia]);
 
   // Create folder
-  async function handleCreateFolder() {
+  const handleCreateFolder = useCallback(async () => {
     if (!newFolderName.trim()) return;
     const folderPath = `${newFolderName}/.keep`;
     await supabase.storage.from("photos").upload(folderPath, new Blob([""]), { upsert: true });
     setNewFolderName("");
     const detected = await detectFolders();
-    setFolders((prev) =>
-      prev.includes(newFolderName) ? prev : [...prev, newFolderName]
-    );
+    setFolders((prev) => prev.includes(newFolderName) ? prev : [...prev, newFolderName]);
     await loadMedia(activeTab);
-  }
+  }, [newFolderName, detectFolders, loadMedia, activeTab, supabase]);
 
   // Delete & Favorite
-  async function deleteMedia(path: string) {
+  const deleteMedia = useCallback(async (path: string) => {
     await supabase.storage.from("photos").remove([path]);
     setMedia((prev) => prev.filter((m) => m.path !== path));
-  }
-  async function toggleFavorite(path: string) {
+  }, [supabase]);
+  
+  const toggleFavorite = useCallback(async (path: string) => {
     const isFav = favorites.includes(path);
     if (isFav) {
       await supabase.from("photo_favorites").delete().eq("path", path);
@@ -159,34 +157,34 @@ export default function HomePage() {
       await supabase.from("photo_favorites").upsert([{ path }]);
       setFavorites((prev) => [...prev, path]);
     }
-  }
-
+  }, [favorites, supabase]);
+  
   // Download
-  function downloadMedia(url: string, name: string) {
+  const downloadMedia = (url: string, name: string) => {
     const a = document.createElement("a");
     a.href = url;
     a.download = name;
     a.click();
-  }
+  };
 
   // Lightbox controls
-  function openLightbox(i: number) {
+  const openLightbox = (i: number) => {
     setLightboxIndex(i);
     setIsLightboxOpen(true);
     setTimeout(() => {
       (document.getElementById("lightbox-close-btn") as HTMLButtonElement)?.focus?.();
     }, 16);
-  }
-  function closeLightbox() {
+  };
+  const closeLightbox = () => {
     setIsLightboxOpen(false);
     setSlideshowActive(false);
-  }
-  function next() {
+  };
+  const next = () => {
     setLightboxIndex((i) => (i + 1) % media.length);
-  }
-  function prev() {
+  };
+  const prev = () => {
     setLightboxIndex((i) => (i - 1 + media.length) % media.length);
-  }
+  };
 
   // Keyboard nav in lightbox
   useEffect(() => {
