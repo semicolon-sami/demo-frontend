@@ -3,6 +3,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { redirect } from "next/navigation";
 
 export default async function LandingPage() {
+  // PASS THE FUNCTION, NOT THE RESULT!
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,35 +20,19 @@ export default async function LandingPage() {
         This is your private music, gallery, and diary portal. Choose what you want to do!
       </p>
       <div className="flex gap-8 flex-wrap">
-        <a
-          className="px-8 py-3 rounded-full font-bold bg-blue-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          href="/music"
-        >
+        <a className="px-8 py-3 rounded-full font-bold bg-blue-500 text-white shadow-lg text-lg hover:scale-105 transition" href="/music">
           Go to Music Player
         </a>
-        <a
-          className="px-8 py-3 rounded-full font-bold bg-pink-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          href="/gallery"
-          target="_blank"
-        >
+        <a className="px-8 py-3 rounded-full font-bold bg-pink-500 text-white shadow-lg text-lg hover:scale-105 transition" href="/gallery" target="_blank">
           View Gallery (new tab)
         </a>
-        <a
-          className="px-8 py-3 rounded-full font-bold bg-blue-800 text-white shadow-lg text-lg hover:scale-105 transition"
-          href="/diary"
-        >
+        <a className="px-8 py-3 rounded-full font-bold bg-blue-800 text-white shadow-lg text-lg hover:scale-105 transition" href="/diary">
           Open Diary
         </a>
-        <a
-          className="px-8 py-3 rounded-full font-bold bg-purple-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          href="/biography"
-        >
+        <a className="px-8 py-3 rounded-full font-bold bg-purple-500 text-white shadow-lg text-lg hover:scale-105 transition" href="/biography">
           My Biography
         </a>
-        <a
-          className="px-8 py-3 rounded-full font-bold bg-green-500 text-white shadow-lg text-lg hover:scale-105 transition"
-          href="/future-plans"
-        >
+        <a className="px-8 py-3 rounded-full font-bold bg-green-500 text-white shadow-lg text-lg hover:scale-105 transition" href="/future-plans">
           Future Plans
         </a>
       </div>
