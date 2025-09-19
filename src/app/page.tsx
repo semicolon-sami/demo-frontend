@@ -14,7 +14,7 @@ export default function LandingPage() {
       <p className="mb-8 text-lg text-blue-700 dark:text-blue-200 font-medium">
         This is your private music, gallery, and diary portal. Choose what you want to do!
       </p>
-      <div className="flex gap-8">
+      <div className="flex gap-8 flex-wrap">
         <button
           className="px-8 py-3 rounded-full font-bold bg-blue-500 text-white shadow-lg text-lg hover:scale-105 transition"
           onClick={() => router.push("/music")}
@@ -27,7 +27,12 @@ export default function LandingPage() {
         >
           View Gallery (new tab)
         </button>
-        {/* Example future navigation: */}
+        <button
+          className="px-8 py-3 rounded-full font-bold bg-blue-800 text-white shadow-lg text-lg hover:scale-105 transition"
+          onClick={() => router.push("/diary")}
+        >
+          Open Diary
+        </button>
         <button
           className="px-8 py-3 rounded-full font-bold bg-purple-500 text-white shadow-lg text-lg hover:scale-105 transition"
           onClick={() => router.push("/biography")}

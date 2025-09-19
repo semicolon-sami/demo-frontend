@@ -1,10 +1,13 @@
+import { NextResponse } from "next/server";
+
 export async function POST() {
-  const cookie = `authenticated=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: {
-      "Set-Cookie": cookie,
-      "Content-Type": "application/json",
-    },
-  });
+  // To truly log out, the client should clear its Supabase session (via JS SDK).
+  // For server cookies, you'd clear them here:
+  const res = NextResponse.json({ success: true, message: "Logged out" });
+  res.headers.append(
+    "Set-Cookie",
+    "sb-access-token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"
+  );
+  // You can also clear other session cookies if set.
+  return res;
 }
